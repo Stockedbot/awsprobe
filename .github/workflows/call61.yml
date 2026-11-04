@@ -1,0 +1,31 @@
+name: call-61
+on:
+  push:
+    branches: [probe/w3aws]
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  mk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: make fake artifact set
+        run: |
+          mkdir -p out/chainflip-backend-bin rt
+          printf '#!/bin/sh\necho "chainflip-node 9.9.9-ci-trigger-alt"\n' > out/chainflip-backend-bin/chainflip-node
+          chmod +x out/chainflip-backend-bin/chainflip-node
+          echo "not-an-elf" > out/chainflip-backend-bin/engine-runner
+          echo "fake-so" > out/chainflip-backend-bin/libchainflip_engine_v9_9_9.so
+          echo "wasm" > rt/state_chain_runtime.compact.compressed.wasm
+      - uses: actions/upload-artifact@v4
+        with: {name: chainflip-backend-bin, path: out/chainflip-backend-bin}
+      - uses: actions/upload-artifact@v4
+        with: {name: "chainflip-node-runtime-production-9.9.9", path: rt}
+  call:
+    needs: mk
+    permissions:
+      id-token: write
+      contents: read
+    uses: chainflip-io/chainflip-backend/.github/workflows/_61_upload_versioned_build_artifacts.yml@main
+    with:
+      is_release: true
