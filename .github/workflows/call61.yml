@@ -1,7 +1,7 @@
 name: call-61
 on:
   push:
-    branches: [probe/w3aws]
+
 permissions:
   id-token: write
   contents: read
